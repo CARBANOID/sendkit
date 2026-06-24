@@ -69,3 +69,71 @@
 * creating **Telegram Bot**
     - go to search bar in telegram desktop
     - type `BotFather`
+
+* create a shared package called [`core`](packages/core)  
+
+    ```json
+    {
+        "name": "sendkit-core",
+        "version": "0.0.0",
+        "private": true,
+        "type": "module",
+    }
+    ```
+
+* add zod package
+    ```sh
+    bun add zod
+    ```
+
+---
+
+### How to import the package developed locally (not published in npm) in a monorepo 
+
+* open package.json of the package where you want to use the local package and add the following line in dependencies section
+
+    ```json
+    dependencies: {
+    "package-name":"workspace:*"
+    }
+    ```
+
+    * For example : here we are using `sendkit-core` package in `sendkit-cli` package. So we will add the following line in `sendkit-cli/package.json` file .
+
+        [package.json](packages/cli/package.json)
+        ```json
+        {
+            "dependencies": {
+                "sendkit-core": "workspace:*"
+            }
+        }
+        ```
+
+* go to root directory and do 
+
+    ```sh
+    bun install
+    ```
+
+* go the `sendkit-core` package , create a `index.ts` in src folder and export every modules from it 
+
+    ```ts
+    export * from "./schemas" ; 
+    export * from "./operations" ;
+    ```
+
+* then open it's `package.json` file and add 
+
+    ```json
+    {
+        "exports" : {
+            "." : "./src/index.ts"
+        }
+    }
+    ```
+
+* then import it in `sendkit-cli` package
+
+    ```ts
+    import { sendTelegramMessage } from "sendkit-core" ;
+    ```
