@@ -54,6 +54,8 @@
         bun add -d @types/node
         ```
 
+### Creating a Basic CLI
+
 * create a basic `cli` using commander : [index.ts](/packages/cli/src/index.ts)
 * run this cli using command   
    
@@ -137,3 +139,66 @@
     ```ts
     import { sendTelegramMessage } from "sendkit-core" ;
     ```
+
+### Local MCP  
+* Primarily meant to be run by the local agents (agent running on your machine) .
+* It is not deployed anywhere instead it uses standard input and output transport (stdin/stdout) which can run anywhere
+
+### Creating a Local MCP 
+
+* package.json configration  
+    ```json
+    {
+        "name": "sendkit-mcp",
+        "version": "0.0.0",
+        "private": true,
+        "type": "module"
+    }
+    ```
+
+* Add MCP TypeScript SDK `v1` package : [https://ts.sdk.modelcontextprotocol.io/](https://ts.sdk.modelcontextprotocol.io/)
+
+    Git : [https://github.com/modelcontextprotocol/typescript-sdk](https://github.com/modelcontextprotocol/typescript-sdk)  
+
+    * go inside `packages/local-mcp` and run 
+        ```sh
+        bun add @modelcontextprotocol/sdk zod
+        ```
+    
+    * add `sendkit-mcp` package as dependency in `local-mcp/package.json` file
+
+        ```json
+        {
+            "dependencies": {
+                "sendkit-mcp": "workspace:*"
+            }
+        }
+        ```
+    
+    * add node types also as dev dependency
+
+        ```
+            bun add -d @types/node
+        ```
+
+    * go to [index.ts](packages/local-mcp/src/index.ts) and create a mcp server 
+
+
+        ### To grant your local agents such as `claude-cli` or `opencode`
+
+        * create a fle name `.mcp.json` in your root directort 
+
+            ```json
+                {
+                    "mcpServers" : {
+                        "sendkit" : {
+                            "type" : "stdio",
+                            "command" : "bun",
+                            "args" : ["run","dev:local-mcp"],
+                            "env" : {
+                                "TELEGRAM_BOT_TOKEN" : " <bot-token>"
+                            }
+                        }
+                    }
+                }
+            ```

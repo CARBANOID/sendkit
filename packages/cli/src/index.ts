@@ -6,7 +6,7 @@ const program = new Command() ;
 program
     .name("sendkit")
     .description("SendKit tutorial CLI")
-    .command("telegram")
+    .command("telegram")   // name of tool
     .description("Send a Telegram message")
     .argument("<chatId>","Telegram chat ID")  // 1st argument
     .argument("<message>","Message text to send") // 2nd argument
