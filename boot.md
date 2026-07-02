@@ -202,3 +202,99 @@
                     }
                 }
             ```
+
+
+### Remote MCP
+* create a lightweight hono server which is going to expose a post request to an MCP endpoint.
+
+* instead of devloping it in a new package , we will have to make it in a new boundary called [`apps/remote-mcp`](apps/remote-mcp) cause `remote-mcp` has it's own **http boundary** , it's not a package we or the users are going to install , it is a deployable application .
+
+* go to root `package`.json and add the following line in workspaces section
+
+    ```json
+    {
+        "workspaces": ["apps/*"]
+    }
+    ```
+
+* go inside `apps/remote-mcp` and create a package.json file with the following content
+
+    ```json
+    {
+        "name": "sendkit-remote-mcp",
+        "version": "0.0.0",
+        "private": true,
+        "type": "module"
+    }
+    ```
+
+* install these packages inside `apps/remote-mcp` 
+
+    ```sh
+        bun add -d @types/node
+    ```
+
+    ```sh
+        bun add @modelcontextprotocol/sdk 
+    ```
+
+    ```sh
+        bun add hono
+    ```
+
+* add `sendkit-core` package as dependency in `remote-mcp/package.json` file
+
+    ```json
+    {
+        "dependencies": {
+            "sendkit-core": "workspace:*"
+        }
+    }
+    ```
+
+* create the remote mcp server : [index.ts](apps/remote-mcp/src/index.ts)
+
+* add exports in the `package.json` file  
+
+    ```json 
+        {
+            "exports" : {
+            "." : "./src/index.ts"
+            }
+        }
+    ```
+
+* Run the remote mcp server using command 
+
+    ```sh
+    bun run dev:remote-mcp
+    ```
+
+    * open command prompt and run the following command to test the remote mcp server
+
+        ```sh
+        curl -i -X POST "http://localhost:3000/not-a-real-token/mcp"
+        ```
+
+---
+
+### Testing the Remote MCP Server (by punching holes with `Ngrok`)
+
+* run 
+
+    ```
+    ngrok http 3000
+    ```
+    > 3000 is the port where the remote mcp server is running
+
+* you will get a url like this `https://<random-string>.ngrok-free.app` which is publicly accessible and can be used to test the remote mcp server
+
+* go to `claude.com` , go to customize then connector and create a new connector
+
+* give it a name and for url give the ngrok url with `/<your-bot-token>/mcp` endpoint
+
+    ```
+    https://<random-string>.ngrok-free.app/<your-bot-token>/mcp
+    ```
+
+* for `chatgpt.com` , go to your profile then setting then go to app and create a new app 
