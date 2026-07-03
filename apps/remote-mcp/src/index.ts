@@ -1,12 +1,30 @@
-import { Hono } from 'hono' ;
+import { Hono , type Context } from 'hono' ;
 import { 
     McpServer 
 } from '@modelcontextprotocol/sdk/server/mcp.js' ;
 import { 
     WebStandardStreamableHTTPServerTransport 
 } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
-
 import { sendTelegramMessage , telegramMessageInputSchema } from 'sendkit-core';
+import { createClerkClient } from '@clerk/backend' ;
+import { generateClerkProtectedResourceMetadata } from "@clerk/mcp-tools/server"
+
+const clerkPublishableKey = process.env.CLERK_PUBLISHABLE_KEY ;
+const clerkSecretKey = process.env.CLERK_SECRET_KEY ;
+
+if(!clerkPublishableKey){
+    throw new Error("CLERK_PUBLISHABLE_KEY environment variable is required") ;
+}
+
+if(!clerkSecretKey){
+    throw new Error("CLERK_SECRET_KEY environment variable is required") ;
+}
+
+const clerkClient = createClerkClient({
+    publishableKey : clerkPublishableKey,
+    secretKey : clerkSecretKey
+}) ;
+
 
 function createServer(botToken : string){
     const server = new McpServer({
@@ -44,8 +62,41 @@ function createServer(botToken : string){
 
 const app = new Hono() ; // creating a Hono application
 
+function protectedResourceMetadataUrl(c : Context, botToken : string){
+    return new URL(`/.well-known/oauth-protected-resource/${botToken}/mcp`,c.req.url).toString() ;
+}
+
+function unauthorizedMcpResponse(c : Context, botToken : string){
+    c.header(
+        "WWW-Authenticate",
+        `Bearer resource_metadata ="${protectedResourceMetadataUrl(c,botToken)}"`,
+    ) ;
+    return c.json({error : "Unauthorized"},401) ;
+}
+
 app.post("/:botToken/mcp",async(c) =>{
-    const botToken = c.req.param("botToken") ; 
+    const botToken = c.req.param("botToken") ;
+
+    // adding OAuth 
+    const authHeader = c.req.header("authorization") ; 
+
+    if(!authHeader?.startsWith("Bearer ")){
+        return unauthorizedMcpResponse(c,botToken) ;
+    }
+
+    try{
+        const requestState = await clerkClient.authenticateRequest(c.req.raw,{
+            acceptsToken : "oauth_token",
+        })
+
+        if(!requestState.isAuthenticated){
+            return unauthorizedMcpResponse(c,botToken) ;
+        }
+    }
+    catch{
+        return unauthorizedMcpResponse(c,botToken) ;
+    }
+
     const server = createServer(botToken) ;
 
     const transport = new WebStandardStreamableHTTPServerTransport({
@@ -63,6 +114,17 @@ app.post("/:botToken/mcp",async(c) =>{
     }
 }); 
 
+// MCP defined OAuth endpoint for Agents
+app.get("/.well-known/oauth-protected-resource/:botToken/mcp",(c) =>{
+    return c.json(
+        generateClerkProtectedResourceMetadata({
+            publishableKey :clerkPublishableKey,
+            // redirect URL : sometime it's protocol changed to http from https , so we have to modify the fetch function
+            resourceUrl : new URL(`/${c.req.param("botToken")}/mcp`,c.req.url).toString(), // redirects to /:botToken/mcp route
+        })
+    )
+})
+
 app.notFound((c) =>{
     return c.json({error : "Not Found"},404) ;
 }) 
@@ -71,5 +133,11 @@ const port = Number(process.env.PORT ?? 3000) ;
 
 export default {
     port , 
-    fetch : app.fetch
+    fetch : (req : Request) =>{   // custom fetch function that ensures the protocol remains https not http
+        const url = new URL(req.url) ; 
+        url.protocol = req.headers.get("x-forwarded-proto") ?? url.protocol ;
+        url.host = req.headers.get("x-forwarded-host") ?? url.host ;
+
+        return app.fetch(new Request(url, req)) ;
+    }
 }

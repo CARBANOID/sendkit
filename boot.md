@@ -254,6 +254,84 @@
 
 * create the remote mcp server : [index.ts](apps/remote-mcp/src/index.ts)
 
+    ```ts
+    import { Hono } from 'hono' ;
+    import { 
+        McpServer 
+    } from '@modelcontextprotocol/sdk/server/mcp.js' ;
+    import { 
+        WebStandardStreamableHTTPServerTransport 
+    } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
+    import { sendTelegramMessage , telegramMessageInputSchema } from 'sendkit-core';
+
+    function createServer(botToken : string){
+        const server = new McpServer({
+            name : "sendkit-remote",
+            version : "0.0.0"
+        })
+
+        server.registerTool(
+            "telegram",  // tool name
+            {
+                title : "Telegram",
+                description : "Send a Telegram message.",
+                inputSchema : telegramMessageInputSchema
+            },
+            async(input) =>{
+                const result = await sendTelegramMessage({
+                    ...input,
+                    botToken, 
+                })
+
+                return {
+                    // format of data agent responses to user
+                    content : [
+                        {
+                            type : "text",
+                            text : `Send Telegram message ${result.messageId} to chat ${result.chatId}`
+                        }
+                    ],
+                    structuredContent : result
+                } ;
+            }
+        )
+        return server ;
+    }
+
+    const app = new Hono() ; // creating a Hono application
+
+    app.post("/:botToken/mcp",async(c) =>{
+        const botToken = c.req.param("botToken") ; 
+        const server = createServer(botToken) ;
+
+        const transport = new WebStandardStreamableHTTPServerTransport({
+            sessionIdGenerator : undefined ,
+            enableJsonResponse : true 
+        })
+
+        await server.connect(transport) ;
+
+        try{
+            return await transport.handleRequest(c.req.raw) ;
+        }
+        finally{
+            await server.close() ;
+        }
+    }); 
+
+    app.notFound((c) =>{
+        return c.json({error : "Not Found"},404) ;
+    }) 
+
+    const port = Number(process.env.PORT ?? 3000) ;
+
+    export default {
+        port , 
+        fetch : app.fetch
+    }
+    ```
+
+
 * add exports in the `package.json` file  
 
     ```json 
@@ -297,4 +375,44 @@
     https://<random-string>.ngrok-free.app/<your-bot-token>/mcp
     ```
 
-* for `chatgpt.com` , go to your profile then setting then go to app and create a new app 
+* for `chatgpt.com` , go to your profile then setting then go to app and create a new app , give the endpoint and select no authentication and save it
+
+
+### Adding Auth (using `Clerk`) :
+* [https://cwa.run/clerk](https://cwa.run/clerk)
+
+* Express Intergration : [https://clerk.com/docs/expressjs/getting-started/quickstart](https://clerk.com/docs/expressjs/getting-started/quickstart)
+
+* install packages inside `apps/remote-mcp`
+    ```
+    bun install @clerk/backend @clerk/mcp-tools
+    ```
+
+* MCP rules for Authorization : [https://modelcontextprotocol.io/docs/tutorials/security/authorization](https://modelcontextprotocol.io/docs/tutorials/security/authorization)
+
+* add auth in [`index.ts`](apps/remote-mcp/src/index.ts)
+
+* in clerk dashboard -> go to developers ->  OAuth applications -> enable Dynamic client registration ( allows OAuth Client to register themselves dynamically that mean we don't have to add custom OAuth Application for each http server such as cluade or ChatGpt instead it can register itself)
+
+* then run the `remote mcp server` and `ngrok`
+
+    ```sh
+     bun run dev:remote-mcp
+     ```
+
+     ```sh
+     ngrok http 3000
+     ```
+
+* go to claude.com and create a `SendKit` connector with same configrations as before and no need to seprately add OAuth , when you connect , you will be redirected to clerk OAuth page and you will see claude added in OAuth Applications page .
+
+* **Clerk OAuth page**
+![](output/clerk-oauth-page.png)  
+
+
+*  **OAuth Applications**  
+![](output/oauth-applications.png)  
+
+* same for ChatGpt , but when you do click connect and  then click signin with SendKit , you will be redirected to ChatGPT again .
+
+    * you will need to go to `OAuth Applications` page in clerk and delete ChatGPT and create a custom OaAuth Client for it instead of dynamic

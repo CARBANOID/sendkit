@@ -3,13 +3,15 @@
     "version": "0.0.0",
     "private": true,
     "type": "module",
-    "exports" : {
-        "." : "./src/index.ts"
+    "exports": {
+        ".": "./src/index.ts"
     },
     "dependencies": {
+        "@clerk/backend": "^3.10.0",
+        "@clerk/mcp-tools": "^0.5.0",
         "@modelcontextprotocol/sdk": "^1.29.0",
         "hono": "^4.12.27",
-        "sendkit-core" : "workspace:*"
+        "sendkit-core": "workspace:*"
     },
     "devDependencies": {
         "@types/node": "^26.1.0"
