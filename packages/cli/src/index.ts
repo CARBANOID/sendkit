@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { sendTelegramMessage } from "sendkit-core";
+import { sendTelegramMessage } from "@carbanoid-org/sendkit-core";
 import z from "zod";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
