@@ -17,7 +17,10 @@
     "build:core": "bun run --filter @carbanoid-org/sendkit-core build",
     "build:cli": "bun run --filter @carbanoid-org/sendkit build",
     "build:local-mcp": "bun run --filter @carbanoid-org/sendkit-mcp build",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "release:pack:core" : "bun run --filter @carbanoid-org/sendkit-core pack:dry",
+    "release:pack:cli" : "bun run --filter @carbanoid-org/sendkit pack:dry",
+    "release:pack:local-mcp" : "bun run --filter @carbanoid-org/sendkit-mcp pack:dry"
   },
   "devDependencies": {
     "@types/node": "^26.1.0",

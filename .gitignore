@@ -7,3 +7,5 @@ dist/
 *.log
 .mcp.json
 boot.md
+output/
+.opencode.json
